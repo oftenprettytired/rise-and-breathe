@@ -303,6 +303,39 @@ p.subtext {
   background: var(--sage-pale);
 }
 
+.technique-main {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.technique-info-btn {
+  flex-shrink: 0;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--stone-light);
+  background: transparent;
+  color: var(--stone);
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 300ms var(--ease-slow), color 300ms var(--ease-slow);
+}
+
+.technique-info-btn:hover {
+  border-color: var(--sage);
+  color: var(--sage-deep);
+}
+
 .technique-icon {
   width: 2.6rem;
   height: 2.6rem;
@@ -749,6 +782,26 @@ p.subtext {
 
 .overlay-sheet .quote-text {
   font-size: 1.4rem;
+}
+
+.overlay-icon {
+  font-size: 1.8rem;
+  margin: 0 0 0.6rem;
+}
+
+.overlay-title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 1.35rem;
+  color: var(--stone-dark);
+  margin: 0 0 0.3rem;
+}
+
+.overlay-subtitle {
+  font-size: 0.85rem;
+  color: var(--sage-deep);
+  font-weight: 500;
+  margin: 0;
 }
 
 .overlay-context {

@@ -11,6 +11,8 @@ const TECHNIQUES = {
     id: "box",
     name: "Box Breathing",
     description: "Building a foundation of calm",
+    details:
+      "Box breathing follows a simple, symmetrical rhythm: inhale for four counts, hold for four, exhale for four, hold for four — like tracing the four equal sides of a square. It's used by Navy SEALs and elite athletes to stay steady under pressure, and it remains one of the most reliable ways to calm a racing mind. Because every phase is the same length, it gives your mind a simple, even pattern to rest into.",
     icon: "◻",
     phases: [
       { key: "inhale", label: "Breathe in", seconds: 4, voice: "Breathe in" },
@@ -23,6 +25,8 @@ const TECHNIQUES = {
     id: "478",
     name: "4-7-8 Breathing",
     description: "Release and let go",
+    details:
+      "Popularized by Dr. Andrew Weil and rooted in ancient pranayama practice, this technique uses a lengthened exhale to trigger your body's relaxation response: inhale for four counts, hold for seven, and release slowly over eight. The extended hold and exhale activate the parasympathetic nervous system — your body's built-in 'rest and digest' switch — which makes it especially effective for easing anxiety or winding down before sleep.",
     icon: "◯",
     phases: [
       { key: "inhale", label: "Breathe in", seconds: 4, voice: "Breathe in through your nose" },
@@ -34,6 +38,8 @@ const TECHNIQUES = {
     id: "nadi",
     name: "Alternate Nostril",
     description: "Find your center",
+    details:
+      "Nadi Shodhana, or 'channel clearing,' is a yogic breathing practice that alternates airflow between the left and right side in a steady, balanced rhythm. Yogic tradition holds that this balances the two hemispheres of the mind, and many practitioners find it brings a distinct sense of clarity and centeredness — a gentle reset when your thoughts feel scattered.",
     icon: "☯",
     phases: [
       { key: "inhaleLeft", label: "Inhale left", seconds: 4, voice: "Inhale through your left", side: "left" },
@@ -48,6 +54,8 @@ const TECHNIQUES = {
     id: "belly",
     name: "Diaphragmatic Breathing",
     description: "Root into safety",
+    details:
+      "Also called belly breathing, this technique draws air deep into the base of your lungs rather than shallow breathing into the chest, letting your belly rise and fall with each breath. It directly stimulates the vagus nerve, one of the body's primary calming pathways, which makes it a foundational, grounding practice — often the first technique taught in meditation and stress-reduction programs because it's so simple and effective.",
     icon: "✋",
     phases: [
       { key: "inhale", label: "Breathe in", seconds: 5, voice: "Breathe in, let your belly rise" },
@@ -358,6 +366,25 @@ function ReadMoreOverlay({ quote, onClose }) {
   );
 }
 
+function TechniqueInfoOverlay({ technique, onClose }) {
+  if (!technique) return null;
+  return (
+    <div className="overlay-backdrop" onClick={onClose}>
+      <div className="overlay-sheet" onClick={(e) => e.stopPropagation()}>
+        <p className="overlay-icon">{technique.icon}</p>
+        <p className="overlay-title">{technique.name}</p>
+        <p className="overlay-subtitle">{technique.description}</p>
+        <p className="overlay-context" style={{ marginTop: 0 }}>
+          {technique.details}
+        </p>
+        <button className="btn btn-primary btn-block" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------------------- */
 /* Breath visual                                                          */
 /* ---------------------------------------------------------------------- */
@@ -488,6 +515,7 @@ function WelcomeScreen({ state, onNameSave, onNavigate }) {
 function SetupScreen({ state, onBack, onStart }) {
   const [duration, setDuration] = useState(10);
   const [technique, setTechnique] = useState(state.prefs.techniquePref || "rotate");
+  const [infoId, setInfoId] = useState(null);
 
   return (
     <div className="screen">
@@ -516,17 +544,26 @@ function SetupScreen({ state, onBack, onStart }) {
         {TECHNIQUE_ORDER.map((id) => {
           const t = TECHNIQUES[id];
           return (
-            <button
-              key={id}
-              className={`technique-card ${technique === id ? "selected" : ""}`}
-              onClick={() => setTechnique(id)}
-            >
-              <span className="technique-icon">{t.icon}</span>
-              <span className="technique-copy">
-                <p className="technique-name">{t.name}</p>
-                <p className="technique-desc">{t.description}</p>
-              </span>
-            </button>
+            <div key={id} className={`technique-card ${technique === id ? "selected" : ""}`}>
+              <button className="technique-main" onClick={() => setTechnique(id)}>
+                <span className="technique-icon">{t.icon}</span>
+                <span className="technique-copy">
+                  <p className="technique-name">{t.name}</p>
+                  <p className="technique-desc">{t.description}</p>
+                </span>
+              </button>
+              <button
+                className="technique-info-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setInfoId(id);
+                }}
+                title={`About ${t.name}`}
+                aria-label={`About ${t.name}`}
+              >
+                &#9432;
+              </button>
+            </div>
           );
         })}
       </div>
@@ -546,6 +583,8 @@ function SetupScreen({ state, onBack, onStart }) {
           Begin
         </button>
       </div>
+
+      {infoId && <TechniqueInfoOverlay technique={TECHNIQUES[infoId]} onClose={() => setInfoId(null)} />}
     </div>
   );
 }

@@ -64,9 +64,11 @@ const DURATIONS = {
   15: { open: 60, breath: 720, close: 120, label: "15 min" },
 };
 
+// Labeled by their well-known reference pitch (432/528 Hz), but actually
+// played an octave down (same note, lower octave) for a deeper, softer hum.
 const FREQUENCIES = {
-  432: { label: "432 Hz", desc: "Earthy, grounding" },
-  528: { label: "528 Hz", desc: "Uplifting, healing" },
+  432: { label: "432 Hz", desc: "Earthy, grounding", hz: 216 },
+  528: { label: "528 Hz", desc: "Uplifting, healing", hz: 264 },
 };
 
 // Pre-rendered voiceover clips (warm, human-recorded-style narration) —
@@ -193,15 +195,14 @@ function pickFrequencyForSession(frequencyPref, history) {
   return history.length % 2 === 0 ? 432 : 528;
 }
 
-// Soft bell tones for chime cues, keyed by breath phase kind. Each is a
-// short arpeggio of sine tones with a slow decay so it reads as a gentle
-// chime rather than a notification-style beep.
+// Singing-bowl-style ding, one low fundamental per breath phase kind
+// (G3 on the inhale settling down to C3 on the exhale).
 const CHIME_TONES = {
-  inhale: [880, 1318.51], // rising, A5 -> E6
-  exhale: [659.25, 493.88], // falling, E5 -> B4
-  hold: [739.99], // single soft F#5
-  start: [523.25, 659.25, 783.99], // soft ascending C major triad
-  end: [783.99, 659.25, 523.25], // soft descending resolve
+  inhale: 196.0, // G3
+  hold: 164.81, // E3
+  exhale: 130.81, // C3
+  start: 196.0, // G3
+  end: 130.81, // C3
 };
 
 function phaseKind(key) {
@@ -264,24 +265,32 @@ const AudioEngine = {
     this.gain = null;
   },
 
+  // A single low singing-bowl-style ding: a fundamental plus a softly
+  // detuned partner (the natural "beating" shimmer of a struck bowl) and
+  // a quiet high overtone, all sine tones with a slow bloom and long decay.
   playChime(kind) {
     const ctx = this.ensureContext();
     if (!ctx) return;
-    const freqs = CHIME_TONES[kind] || CHIME_TONES.hold;
+    const base = CHIME_TONES[kind] || CHIME_TONES.hold;
     const now = ctx.currentTime;
-    freqs.forEach((freq, i) => {
+    const partials = [
+      { mult: 1, gain: 0.15, detune: 0 },
+      { mult: 1, gain: 0.07, detune: 5 },
+      { mult: 2.76, gain: 0.035, detune: 0 },
+    ];
+    partials.forEach(({ mult, gain, detune }) => {
       const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      const g = ctx.createGain();
       osc.type = "sine";
-      osc.frequency.value = freq;
-      const start = now + i * 0.09;
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.11, start + 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.4);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(start);
-      osc.stop(start + 1.5);
+      osc.frequency.value = base * mult;
+      if (detune) osc.detune.value = detune;
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(gain, now + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 3.2);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 3.3);
     });
   },
 
@@ -606,7 +615,7 @@ function RitualScreen({ state, session, onComplete, onExit }) {
     setPhaseElapsed(0);
     setElapsed(0);
 
-    if (soundOnRef.current) AudioEngine.startTone(frequency);
+    if (soundOnRef.current) AudioEngine.startTone(FREQUENCIES[frequency].hz);
     playEdgeCue("start");
 
     let totalElapsed = 0;
@@ -643,9 +652,9 @@ function RitualScreen({ state, session, onComplete, onExit }) {
     return () => AudioEngine.stopAll();
   }, []);
 
-  const cycleCueStyle = () => {
+  const selectCueStyle = (mode) => {
     setCueStyle((current) => {
-      const next = current === "voice" ? "chime" : current === "chime" ? "off" : "voice";
+      const next = current === mode ? "off" : mode;
       AudioEngine.stopSpeak();
       return next;
     });
@@ -655,7 +664,7 @@ function RitualScreen({ state, session, onComplete, onExit }) {
     setSoundOn((v) => {
       const next = !v;
       if (next) {
-        if (stageRef.current === "breathing") AudioEngine.startTone(frequency);
+        if (stageRef.current === "breathing") AudioEngine.startTone(FREQUENCIES[frequency].hz);
       } else {
         AudioEngine.stopTone();
       }
@@ -716,15 +725,23 @@ function RitualScreen({ state, session, onComplete, onExit }) {
       <div className="ritual-controls">
         <div className="control-group">
           <button
-            className={`icon-btn ${cueStyle !== "off" ? "active" : ""}`}
-            onClick={cycleCueStyle}
-            title="Tap to switch between voice, chime, and off"
+            className={`icon-btn ${cueStyle === "voice" ? "active" : ""}`}
+            onClick={() => selectCueStyle("voice")}
+            title="Voice cues"
           >
-            {cueStyle === "voice" ? "\u{1F5E3}\u{FE0F}" : cueStyle === "chime" ? "\u{1F514}" : "\u{1F507}"}
+            {"\u{1F5E3}\u{FE0F}"}
           </button>
-          <span className="control-label">
-            {cueStyle === "voice" ? "Voice" : cueStyle === "chime" ? "Chime" : "Cues off"}
-          </span>
+          <span className="control-label">Voice</span>
+        </div>
+        <div className="control-group">
+          <button
+            className={`icon-btn ${cueStyle === "chime" ? "active" : ""}`}
+            onClick={() => selectCueStyle("chime")}
+            title="Chime cues"
+          >
+            {"\u{1F514}"}
+          </button>
+          <span className="control-label">Chime</span>
         </div>
         <div className="control-group">
           <button
@@ -869,7 +886,7 @@ function SettingsScreen({ state, onBack, onUpdate, onResetProgress }) {
           </div>
           <p className="settings-sub" style={{ marginTop: "0.5rem" }}>
             {state.prefs.cueStyle === "chime"
-              ? "A soft bell marks each breath change."
+              ? "A soft singing-bowl ding marks each breath change."
               : state.prefs.cueStyle === "voice"
               ? "A gentle voice guides each breath change."
               : "No spoken or chime cues — visual guide only."}
